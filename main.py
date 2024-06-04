@@ -6,14 +6,6 @@ import streamlit as st
 import pandas as pd
 import os
 
-file_formats = {
-    "csv": pd.read_csv,
-    "xls": pd.read_excel,
-    "xlsx": pd.read_excel,
-    "xlsm": pd.read_excel,
-    "xlsb": pd.read_excel,
-}
-
 
 def clear_submit():
     """
@@ -24,37 +16,41 @@ def clear_submit():
 
 
 @st.cache_data(ttl="2h")
-def load_data(uploaded_file):
-    try:
-        ext = os.path.splitext(uploaded_file.name)[1][1:].lower()
-    except:
-        ext = uploaded_file.split(".")[-1]
-    if ext in file_formats:
-        return file_formats[ext](uploaded_file)
+def load_data():
+    file_path = "data/out.csv"
+    if os.path.exists(file_path):
+        return pd.read_csv(file_path)
     else:
-        st.error(f"Unsupported file format: {ext}")
+        st.error(f"File not found: {file_path}")
         return None
 
 
 st.set_page_config(page_title="LangChain: Chat with pandas DataFrame", page_icon="🦜")
-st.title("🦜 LangChain: Chat with pandas DataFrame")
-
-uploaded_file = st.file_uploader(
-    "Upload a Data file",
-    type=list(file_formats.keys()),
-    help="Various File formats are Support",
-    on_change=clear_submit,
+st.title("🦜 LangChain OpenAI: Chat with the NFT Dataset")
+st.subheader(
+    "This app is a WIP prototype and there may be bugs.  Try asking questions about the NFT dataset.  Last Updated: June 2024"
 )
 
-if not uploaded_file:
-    st.warning(
-        "This app uses LangChain's `PythonAstREPLTool` which is vulnerable to arbitrary code execution. Please use caution in deploying and sharing this app."
-    )
+df = load_data()
 
-if uploaded_file:
-    df = load_data(uploaded_file)
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    st.error("OpenAI API Key not found in environment variables.")
+    st.stop()
 
-openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
+correct_password = os.getenv("PASSWORD")
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+if not st.session_state["authenticated"]:
+    password = st.sidebar.text_input("Password", type="password")
+    if st.sidebar.button("Submit"):
+        if password == correct_password:
+            st.session_state["authenticated"] = True
+        else:
+            st.sidebar.error("Incorrect password. Please try again.")
+    st.stop()
+
 if "messages" not in st.session_state or st.sidebar.button(
     "Clear conversation history"
 ):
